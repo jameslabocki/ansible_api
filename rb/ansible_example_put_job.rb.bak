@@ -1,0 +1,38 @@
+#!/usr/bin/ruby
+
+require "net/https"
+require "uri"
+require "json"
+require "pp"
+require "rexml/document"
+
+include REXML
+
+uri = URI.parse("https://10.19.1.107/api/v1/jobs/")
+
+http = Net::HTTP.new(uri.host, uri.port)
+
+request = Net::HTTP::Post.new(uri.request_uri)
+
+http = Net::HTTP.new(uri.host, uri.port)
+http.use_ssl = true
+http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+#request.set_form_data({"name" => "newhost2", "inventory" => 1})
+#request.set_form_data({"name" => "BasicScan", "description" => "yessir3", "job_type" => "scan", "inventory" => "1", "project" => "null", "playbook" => "", "credential" => "2", "cloud_credential" => "null", "forks" => "0", "limit" => "", "verbosity" => "0", "extra_vars" => "", "job_tags" => "", "force_handlers" => false, "skip_tags" => "", "start_at_task" => "", "job_template" => "7"})
+
+#request.set_form_data({"name" => "BasicScan", "description" => "yessir3", "project" => ""})
+request.set_form_data name: 'BasicScan', description: 'yessir3', project: null
+
+request.basic_auth("admin", "redhat")
+
+response = http.request(request)
+
+#docstatus = Document.new(response.status)
+#puts docstatus
+
+doc = Document.new(response.body)
+
+puts doc
+
+
