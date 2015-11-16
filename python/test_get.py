@@ -1,8 +1,10 @@
 #!/usr/bin/python
 
-import urllib2
+import requests
+import pprint
 
-url = 'http://10.19.1.107/api/v1/'
-response = urllib2.urlopen(url).read()
+r = requests.get("http://YOURTOWERIP/api/v1/hosts", auth=('admin', 'YOURPASSWORD'))
 
-print response
+pp = pprint.PrettyPrinter(indent=4)
+
+pp.pprint(r.json())

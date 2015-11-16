@@ -1,12 +1,7 @@
 #!/usr/bin/python
 
-import urllib
-import urllib2
+import requests
 
-url = 'http://10.19.1.107/api/v1/hosts/'
-params = urllib.urlencode({
-  'firstName': 'John',
-  'lastName': 'Doe'
-})
-response = urllib2.urlopen(url, params).read()
+r = requests.post("http://YOURTOWERIP/api/v1/hosts/", data = {"name":"HOSTIPADDRESS", "inventory":1}, auth=('admin', 'YOURPASSWORDHERE'))
 
+print r.text

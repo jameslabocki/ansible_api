@@ -13,7 +13,7 @@ include REXML
 
 # Create a job in Ansible
 # This should probably use a job template, but I took a shortcut
-uri = URI.parse("https://10.19.1.107/api/v1/jobs/")
+uri = URI.parse("https://YOURTOWERIP/api/v1/jobs/")
 http = Net::HTTP.new(uri.host, uri.port)
 request = Net::HTTP::Post.new(uri.request_uri)
 
@@ -22,7 +22,7 @@ http.use_ssl = true
 http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
 request.set_form_data name: 'installApache', description: 'yessir3', project: "6", playbook: "webserver.yml", inventory: "2", job_type: "run", credential: "3"
-request.basic_auth("admin", "redhat")
+request.basic_auth("admin", "YOURPASSWORD")
 response = http.request(request)
 
 # This is useful for troubleshooting
@@ -34,7 +34,7 @@ newhash = JSON.parse(response.body)
 myjobid = newhash["id"].to_s
 
 # Now let's start the job we created
-uri = URI.parse("https://10.19.1.107/api/v1/jobs/"+myjobid+"/start/")
+uri = URI.parse("https://YOURTOWERIP/api/v1/jobs/"+myjobid+"/start/")
 http = Net::HTTP.new(uri.host, uri.port)
 
 request = Net::HTTP::Post.new(uri.request_uri)
@@ -44,7 +44,7 @@ http.use_ssl = true
 http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
 request.set_form_data forks: '0'
-request.basic_auth("admin", "redhat")
+request.basic_auth("admin", "YOURPASSWORD")
 response = http.request(request)
 
 
