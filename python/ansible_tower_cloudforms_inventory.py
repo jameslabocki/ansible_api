@@ -17,12 +17,9 @@ import ConfigParser
 from collections import defaultdict
 import requests
 import json
-#import urllib3
 
 # This disables warnings and is not a good idea, but hey, this is a demo
 # http://urllib3.readthedocs.org/en/latest/security.html#disabling-warnings
-#urllib3.disable_warnings()
-
 requests.packages.urllib3.disable_warnings()
 
 class CloudFormsInventory(object):
@@ -45,14 +42,22 @@ class CloudFormsInventory(object):
         self.parse_cli_args()
 
 	# Get Hosts
-	self.get_hosts()
+	if self.args.list:
+		self.get_hosts()
+
+	# This doesn't exist yet and needs to be added
+        if self.args.host:
+		data2 = { }
+		print json.dumps(data2, indent=2)
 
     def parse_cli_args(self):
         ''' Command line argument processing '''
 
         parser = argparse.ArgumentParser(description='Produce an Ansible Inventory file based on CloudForms')
-        parser.add_argument('--list', action='store_true', default=True,
-                           help='List instances (default: True)')
+        parser.add_argument('--list', action='store_true', default=False,
+                           help='List instances (default: False)')
+	parser.add_argument('--host', action='store',
+                           help='Get all the variables about a specific instance')
         self.args = parser.parse_args()
 
     def read_settings(self):
@@ -60,7 +65,7 @@ class CloudFormsInventory(object):
 
         config = ConfigParser.SafeConfigParser()
         cloudforms_default_ini_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cloudforms.ini')
-        cloudforms_ini_path = os.environ.get('CF_INI_PATH', cloudforms_default_ini_path)
+        cloudforms_ini_path = "/opt/rh/cloudforms.ini"
         config.read(cloudforms_ini_path)
 
 	# Version
@@ -112,9 +117,7 @@ class CloudFormsInventory(object):
 					getnext = True
 	newdict = {'hosts': newlist}
 	newdict2 = {'Dynamic_CloudForms': newdict}
-	obj2 = json.dumps(newdict2, indent=2)
-	#Dump out the json
-	print obj2
+	print json.dumps(newdict2, indent=2)
 
 # Run the script
 CloudFormsInventory()
