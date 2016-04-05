@@ -8,13 +8,9 @@ Modeled after https://raw.githubusercontent.com/ansible/ansible/stable-1.9/plugi
 jlabocki <at> redhat.com or @jameslabocki on twitter
 '''
 
-import sys
 import os
 import argparse
-import re
-from time import time
 import ConfigParser
-from collections import defaultdict
 import requests
 import json
 
@@ -64,9 +60,16 @@ class CloudFormsInventory(object):
         ''' Reads the settings from the cloudforms.ini file '''
 
         config = ConfigParser.SafeConfigParser()
-        cloudforms_default_ini_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cloudforms.ini')
-        cloudforms_ini_path = "/opt/rh/cloudforms.ini"
-        config.read(cloudforms_ini_path)
+        config_paths = [
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cloudforms.ini'),
+            "/opt/rh/cloudforms.ini",
+        ]
+
+        env_value = os.environ.get('CLOUDFORMS_INI_PATH')
+        if env_value is not None:
+            config_paths.append(os.path.expanduser(os.path.expandvars(env_value)))
+
+        config.read(config_paths)
 
         # Version
         if config.has_option('cloudforms', 'version'):
