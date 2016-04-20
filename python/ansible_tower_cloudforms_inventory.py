@@ -17,10 +17,8 @@ import ConfigParser
 from collections import defaultdict
 import requests
 import json
+import warnings
 
-# This disables warnings and is not a good idea, but hey, this is a demo
-# http://urllib3.readthedocs.org/en/latest/security.html#disabling-warnings
-requests.packages.urllib3.disable_warnings()
 
 class CloudFormsInventory(object):
 
@@ -94,7 +92,9 @@ class CloudFormsInventory(object):
 
     def get_hosts(self):
         ''' Gets host from CloudForms '''
-        r = requests.get("https://" + self.cloudforms_hostname + "/api/vms?expand=resources&attributes=name,power_state", auth=(self.cloudforms_username,self.cloudforms_password), verify=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", requests.packages.urllib3.exceptions.InsecureRequestWarning)
+            r = requests.get("https://" + self.cloudforms_hostname + "/api/vms?expand=resources&attributes=name,power_state", auth=(self.cloudforms_username,self.cloudforms_password), verify=False)
 
         obj = r.json()
 
