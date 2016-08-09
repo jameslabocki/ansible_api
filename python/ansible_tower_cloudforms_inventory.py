@@ -13,7 +13,6 @@ import argparse
 import ConfigParser
 import requests
 import json
-import warnings
 
 
 class CloudFormsInventory(object):
@@ -143,3 +142,4 @@ class CloudFormsInventory(object):
 
 # Run the script
 CloudFormsInventory()
+
