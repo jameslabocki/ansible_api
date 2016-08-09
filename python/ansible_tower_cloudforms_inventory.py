@@ -60,7 +60,7 @@ class CloudFormsInventory(object):
         config = ConfigParser.SafeConfigParser()
         config_paths = [
             os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cloudforms.ini'),
-            "/opt/rh/cloudforms.ini",
+            "/etc/ansible/cloudforms.ini",
         ]
 
         env_value = os.environ.get('CLOUDFORMS_INI_PATH')
