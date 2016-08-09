@@ -93,6 +93,12 @@ class CloudFormsInventory(object):
         else:
             self.cloudforms_password = "none"
 
+        # CloudForms Password
+        if config.has_option('cloudforms', 'ssl_verify'):
+            self.cloudforms_ssl_verify = config.getboolean('cloudforms', 'ssl_verify')
+        else:
+            self.cloudforms_ssl_verify = False
+
     def get_hosts(self):
         ''' Gets host from CloudForms '''
         with warnings.catch_warnings():
