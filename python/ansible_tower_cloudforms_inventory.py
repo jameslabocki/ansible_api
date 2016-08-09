@@ -101,32 +101,45 @@ class CloudFormsInventory(object):
 
     def get_hosts(self):
         ''' Gets host from CloudForms '''
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", requests.packages.urllib3.exceptions.InsecureRequestWarning)
-            r = requests.get("https://" + self.cloudforms_hostname + "/api/vms?expand=resources&attributes=name,power_state", auth=(self.cloudforms_username,self.cloudforms_password), verify=False)
+        r = requests.get("https://" + self.cloudforms_hostname + "/api/vms?expand=resources,tags&attributes=name,power_state,ipaddresses,host_id,vendor,cloud,connection_state,raw_power_state,created_on,id,template,type", auth=(self.cloudforms_username,self.cloudforms_password), verify=self.cloudforms_ssl_verify)
 
-        obj = r.json()
+        vms = json.loads(r.text)
 
-        #Remove objects that don't matter
-        del obj["count"]
-        del obj["subcount"]
-        del obj["name"]
+        hosts = { 'cloudforms': {} }
+        hosts['cloudforms']['hosts'] = []
+        hosts['_meta'] = { 'hostvars': {}}
 
-        #Create a new list to grab VMs with power_state on to add to a new list
-        #I'm sure there is a cleaner way to do this
-        newlist = []
-        getnext = False
-        for x in obj.items():
-            for y in x[1]:
-                for z in y.items():
-                    if getnext == True:
-                        newlist.append(z[1])
-                        getnext = False
-                    if ( z[0] == "power_state" and z[1] == "on" ):
-                        getnext = True
-        newdict = {'hosts': newlist}
-        newdict2 = {'Dynamic_CloudForms': newdict}
-        print json.dumps(newdict2, indent=2)
+        for vm in vms['resources']:
+            if vm['power_state'] == "on":
+                # we are going to use the name of the vm or the FIRST ip address
+                vm_id = vm['name']
+                if vm.has_key('ipaddresses') and vm['ipaddresses'][0]:
+                    vm_id = vm['ipaddresses'][0]
+
+                if vm.has_key('tags'):
+                    for tag in vm['tags']:
+                        if hosts.has_key(tag['name']):
+                            hosts[tag['name']].append(vm_id)
+                        else:
+                            hosts[tag['name']] = [vm_id]
+
+                hosts['cloudforms']['hosts'].append(vm_id)
+
+                hosts['_meta']['hostvars'][vm_id] = {
+                    'cloud': vm['cloud'],
+                    'connection_state': vm['connection_state'],
+                    'created_on': vm['created_on'],
+                    'host_id': vm['host_id'],
+                    'id': vm['id'],
+                    'name': vm['name'],
+                    'power_state': vm['power_state'],
+                    'raw_power_state': vm['raw_power_state'],
+                    'template': vm['template'],
+                    'type': vm['type'],
+                    'vendor': vm['vendor'],
+                }
+
+        print json.dumps(hosts, sort_keys=True, indent=2)
 
 # Run the script
 CloudFormsInventory()
