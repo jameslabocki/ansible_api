@@ -13,12 +13,13 @@ import argparse
 import ConfigParser
 import requests
 import json
+import warnings
 
 
 class CloudFormsInventory(object):
 
     def _empty_inventory(self):
-        return {"_meta" : {"hostvars" : {}}}
+        return {"_meta": {"hostvars": {}}}
 
     def __init__(self):
         ''' Main execution path '''
@@ -40,7 +41,7 @@ class CloudFormsInventory(object):
 
         # This doesn't exist yet and needs to be added
         if self.args.host:
-            data2 = { }
+            data2 = {}
             print json.dumps(data2, indent=2)
 
     def parse_cli_args(self):
@@ -48,9 +49,9 @@ class CloudFormsInventory(object):
 
         parser = argparse.ArgumentParser(description='Produce an Ansible Inventory file based on CloudForms')
         parser.add_argument('--list', action='store_true', default=False,
-                           help='List instances (default: False)')
+                            help='List instances (default: False)')
         parser.add_argument('--host', action='store',
-                           help='Get all the variables about a specific instance')
+                            help='Get all the variables about a specific instance')
         self.args = parser.parse_args()
 
     def read_settings(self):
@@ -92,7 +93,7 @@ class CloudFormsInventory(object):
         else:
             self.cloudforms_password = "none"
 
-        # CloudForms Password
+        # SSL Verification
         if config.has_option('cloudforms', 'ssl_verify'):
             self.cloudforms_ssl_verify = config.getboolean('cloudforms', 'ssl_verify')
         else:
@@ -100,46 +101,59 @@ class CloudFormsInventory(object):
 
     def get_hosts(self):
         ''' Gets host from CloudForms '''
-        r = requests.get("https://" + self.cloudforms_hostname + "/api/vms?expand=resources,tags&attributes=name,power_state,ipaddresses,host_id,vendor,cloud,connection_state,raw_power_state,created_on,id,template,type", auth=(self.cloudforms_username,self.cloudforms_password), verify=self.cloudforms_ssl_verify)
 
-        vms = json.loads(r.text)
+        r = requests.get("https://{0}/api/vms?expand=resources,tags&attributes=name,power_state,ipaddresses,host_id,"
+                         "vendor,cloud,connection_state,location,raw_power_state,created_on,id,template,type".format(
+                             self.cloudforms_hostname), auth=(self.cloudforms_username, self.cloudforms_password),
+                         verify=self.cloudforms_ssl_verify)
+        try:
+            obj = r.json()
+        except ValueError:
+            warnings.warn("Unexpected response from {0} ({1}): {2}".format(self.cloudforms_hostname, r.status_code,
+                                                                           r.reason))
+            obj = {}
 
-        hosts = { 'cloudforms': {} }
-        hosts['cloudforms']['hosts'] = []
-        hosts['_meta'] = { 'hostvars': {}}
+        # Create groups+hosts based on host data
+        for resource in obj.get('resources', []):
+            # Ignore VMS that are not powered on
+            if resource['power_state'] != "on":
+                continue
 
-        for vm in vms['resources']:
-            if vm['power_state'] == "on":
-                # we are going to use the name of the vm or the FIRST ip address
-                vm_id = vm['name']
-                if vm.has_key('ipaddresses') and vm['ipaddresses'][0]:
-                    vm_id = vm['ipaddresses'][0]
+            # Create a 'cloudforms' group
+            if 'cloudforms' not in self.inventory:
+                self.inventory['cloudforms'] = []
 
-                if vm.has_key('tags'):
-                    for tag in vm['tags']:
-                        if hosts.has_key(tag['name']):
-                            hosts[tag['name']].append(vm_id)
-                        else:
-                            hosts[tag['name']] = [vm_id]
+            # Add host to 'cloudforms' group
+            self.inventory['cloudforms'].append(resource['name'])
 
-                hosts['cloudforms']['hosts'].append(vm_id)
+            # Create additional groups
+            for key in ('vendor', 'type', 'location'):
+                if key in resource:
 
-                hosts['_meta']['hostvars'][vm_id] = {
-                    'cloud': vm['cloud'],
-                    'connection_state': vm['connection_state'],
-                    'created_on': vm['created_on'],
-                    'host_id': vm['host_id'],
-                    'id': vm['id'],
-                    'name': vm['name'],
-                    'power_state': vm['power_state'],
-                    'raw_power_state': vm['raw_power_state'],
-                    'template': vm['template'],
-                    'type': vm['type'],
-                    'vendor': vm['vendor'],
-                }
+                    # Create top-level group
+                    if key not in self.inventory:
+                        self.inventory[key] = dict(children=[], vars={}, hosts=[])
 
-        print json.dumps(hosts, sort_keys=True, indent=2)
+                    # Create sub-group
+                    if resource[key] not in self.inventory:
+                        self.inventory[resource[key]] = dict(children=[], vars={}, hosts=[])
+
+                    # Add sub-group, as a child of top-level
+                    if resource[key] not in self.inventory[key]['children']:
+                        self.inventory[key]['children'].append(resource[key])
+
+                    # Add host to sub-group
+                    if resource['name'] not in self.inventory[resource[key]]:
+                        self.inventory[resource[key]]['hosts'].append(resource['name'])
+
+            # Set ansible_ssh_host to the first available ip address
+            if 'ipaddresses' in resource and resource['ipaddresses'] and isinstance(resource['ipaddresses'], list):
+                resource['ansible_ssh_host'] = resource['ipaddresses'][0]
+
+            # Add _meta hostvars
+            self.inventory['_meta']['hostvars'][resource['name']] = resource
+
+        print json.dumps(self.inventory, indent=2)
 
 # Run the script
 CloudFormsInventory()
-
